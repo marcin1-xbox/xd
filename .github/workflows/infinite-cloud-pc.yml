@@ -1,4 +1,4 @@
-name: Cloud PC przez RDP
+name: Cloud PC Naprawa Logowania
 on: workflow_dispatch
 
 jobs:
@@ -12,19 +12,28 @@ jobs:
           Start-Process -FilePath ".\ts.exe" -ArgumentList "/quiet" -Wait
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --unattended
 
-      - name: 2. Wlaczenie Pulpitu Zdalnego i Ustawienie Hasla
+      - name: 2. Instalacja i Konfiguracja Zabezpieczen Sunshine
         shell: powershell
         run: |
-          # Włączamy RDP w rejestrze Windowsa
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          winget install LizardByte.Sunshine --accept-source-agreements --accept-package-agreements
+          $conf = "C:\Program Files\Sunshine\config"
+          New-Item -ItemType Directory -Force -Path $conf
           
-          # Ustawiamy znane hasło dla użytkownika "runneradmin"
-          $Password = ConvertTo-SecureString "RobloxStudio2026!" -AsPlainText -Force
-          Set-LocalUser -Name "runneradmin" -Password $Password
-          Write-Host "Pulpit zdalny gotowy! Uzytkownik: runneradmin, Haslo: RobloxStudio2026!"
+          # Dodajemy zaufane domeny, zeby pozbyc sie bledu CSRF Protection Error
+          $sunshineConf = @"
+          origin_pin_allowed = true
+          require_pin = true
+          csrf_allowed_origins = localhost,127.0.0.1,100.103.133.123,runnervmih882-11.tail60f865.ts.net
+          "@
+          Set-Content -Path "$conf\sunshine.conf" -Value $sunshineConf
+          
+          # Tworzymy na sztywno konto administratora: login: admin, haslo: RobloxStudio2026!
+          # To omija ekran powitalny, ktory sie wysypywal
+          & "C:\Program Files\Sunshine\sunshine.exe" --credentials admin RobloxStudio2026!
 
-      - name: 3. Trzymanie sesji
+      - name: 3. Start Serwera
         shell: powershell
-        run: Start-Sleep -Seconds 20000
-        
+        run: |
+          Start-Process -FilePath "C:\Program Files\Sunshine\sunshine.exe"
+          Start-Sleep -Seconds 20000
+          
