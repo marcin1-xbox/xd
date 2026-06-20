@@ -1,4 +1,4 @@
-name: Cloud PC Autoryzacja PIN
+name: Cloud PC Bez Logowania i PINu
 on: workflow_dispatch
 
 jobs:
@@ -12,20 +12,26 @@ jobs:
           Start-Process -FilePath ".\ts.exe" -ArgumentList "/quiet" -Wait
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --unattended
 
-      - name: 2. Instalacja Sunshine i Parowanie
+      - name: 2. Instalacja i Calkowite Wylaczenie Zabezpieczen
         shell: powershell
         run: |
           winget install LizardByte.Sunshine --accept-source-agreements --accept-package-agreements
           $conf = "C:\Program Files\Sunshine\config"
           New-Item -ItemType Directory -Force -Path $conf
-          Set-Content -Path "$conf\sunshine.conf" -Value "origin_pin_allowed = true"
           
-          # Uruchomienie serwera
+          # Generujemy pusty plik tekstowy dla bazy danych, zeby oszukac serwer, ze ma uzytkownikow
+          New-Item -ItemType File -Force -Path "$conf\apps_json.json" -Value "[]"
+          
+          # Konfiguracja: WYŁĄCZAMY sprawdzanie PINów, haseł (authentication = disabled) i blokade CSRF
+          $sunshineConf = @"
+          origin_pin_allowed = false
+          require_pin = false
+          authentication = disabled
+          "@
+          Set-Content -Path "$conf\sunshine.conf" -Value $sunshineConf
+          
+          # Uruchomienie serwera z wylaczonymi barierami
           Start-Process -FilePath "C:\Program Files\Sunshine\sunshine.exe"
-          Start-Sleep -Seconds 5
-          
-          # AUTOMATYCZNE PAROWANIE TWOJEGO PINU:
-          & "C:\Program Files\Sunshine\sunshine.exe" --add-pin 7402
 
       - name: 3. Trzymanie sesji
         shell: powershell
