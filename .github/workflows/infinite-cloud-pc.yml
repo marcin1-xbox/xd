@@ -1,4 +1,4 @@
-name: Cloud PC Bez PINu i CSRF
+name: Cloud PC Autoryzacja PIN
 on: workflow_dispatch
 
 jobs:
@@ -12,18 +12,22 @@ jobs:
           Start-Process -FilePath ".\ts.exe" -ArgumentList "/quiet" -Wait
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --unattended
 
-      - name: 2. Instalacja Sunshine Autokonfiguracja
+      - name: 2. Instalacja Sunshine i Parowanie
         shell: powershell
         run: |
           winget install LizardByte.Sunshine --accept-source-agreements --accept-package-agreements
           $conf = "C:\Program Files\Sunshine\config"
           New-Item -ItemType Directory -Force -Path $conf
+          Set-Content -Path "$conf\sunshine.conf" -Value "origin_pin_allowed = true"
           
-          # Kluczowe linie - wylaczamy PIN, logowanie i blokade CSRF
-          Set-Content -Path "$conf\sunshine.conf" -Value "origin_pin_allowed = false`nrequire_pin = false`nauthentication = disabled"
-          
+          # Uruchomienie serwera
           Start-Process -FilePath "C:\Program Files\Sunshine\sunshine.exe"
+          Start-Sleep -Seconds 5
+          
+          # AUTOMATYCZNE PAROWANIE TWOJEGO PINU:
+          & "C:\Program Files\Sunshine\sunshine.exe" --add-pin 7402
 
       - name: 3. Trzymanie sesji
         shell: powershell
         run: Start-Sleep -Seconds 20000
+        
