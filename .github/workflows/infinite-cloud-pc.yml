@@ -19,7 +19,7 @@ jobs:
           $conf = "C:\Program Files\Sunshine\config"
           New-Item -ItemType Directory -Force -Path $conf
           
-          # Wylaczamy PIN, logowanie oraz zabezpieczenie CSRF dla IP Tailscale
+          # Kluczowe linie - wylaczamy PIN, logowanie i blokade CSRF
           Set-Content -Path "$conf\sunshine.conf" -Value "origin_pin_allowed = false`nrequire_pin = false`nauthentication = disabled"
           
           Start-Process -FilePath "C:\Program Files\Sunshine\sunshine.exe"
@@ -27,4 +27,3 @@ jobs:
       - name: 3. Trzymanie sesji
         shell: powershell
         run: Start-Sleep -Seconds 20000
-        
