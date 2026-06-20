@@ -1,0 +1,41 @@
+name: Cloud PC Infinite Tailscale
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [restart_pc]
+
+jobs:
+  run-pc:
+    runs-on: windows-latest
+    steps:
+      - name: 1. Połączenie Tailscale
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "ts.exe"
+          Start-Process -FilePath ".\ts.exe" -ArgumentList "/quiet" -Wait
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --unattended
+
+      - name: 2. Instalacja Sunshine (Winget)
+        shell: powershell
+        run: |
+          winget install LizardByte.Sunshine --accept-source-agreements --accept-package-agreements
+          $conf = "C:\Program Files\Sunshine\config"
+          New-Item -ItemType Directory -Force -Path $conf
+          Set-Content -Path "$conf\sunshine.conf" -Value "origin_pin_allowed = true"
+          Start-Process -FilePath "C:\Program Files\Sunshine\sunshine.exe"
+
+      - name: 3. Odliczanie i Pętla przez GitHub API
+        shell: powershell
+        run: |
+          Write-Host "Maszyna działa i jest połączona z Twoim Tailscale! Czekam 5 godzin i 50 minut..."
+          Start-Sleep -Seconds 21000
+          
+          # Automatyczne odpalenie nowej maszyny przed zamknięciem obecnej
+          $headers = @{
+              "Authorization" = "token ${{ secrets.GITHUB_TOKEN }}"
+              "Accept" = "application/vnd.github.v3+json"
+          }
+          $body = '{"event_type": "restart_pc"}'
+          Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/dispatches" -Method Post -Headers $headers -Body $body
+          Write-Host "Sygnał restartu wysłany!"
+          
